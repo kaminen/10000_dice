@@ -1,0 +1,229 @@
+
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>10000 Tärningsspel</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f4f4f9;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+        h1 {
+            margin-top: 20px;
+            font-size: 2rem;
+        }
+        .player-container {
+            margin: 20px auto;
+            max-width: 90%;
+            border: 2px solid #333;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        .active {
+            border-color: #4CAF50;
+        }
+        .inactive {
+            opacity: 0.5;
+        }
+        .dice-container {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+        .dice {
+            width: 50px;
+            height: 50px;
+            margin: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            border-radius: 8px;
+            background-color: #fff;
+            border: 2px solid #333;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+            cursor: pointer;
+        }
+        .held {
+            background-color: #ddd;
+            border-color: #888;
+        }
+        .roll-button, .stop-button {
+            padding: 10px 15px;
+            font-size: 1rem;
+            font-weight: bold;
+            color: #fff;
+            background-color: #4CAF50;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        .roll-button:hover, .stop-button:hover {
+            background-color: #45a049;
+        }
+        .score, .total-score {
+            font-size: 1rem;
+            margin-top: 10px;
+        }
+        .message {
+            font-size: 1.2rem;
+            color: #d9534f;
+            margin-top: 20px;
+            display: none;
+        }
+        @media (max-width: 768px) {
+            .dice {
+                width: 40px;
+                height: 40px;
+                font-size: 1.2rem;
+            }
+            .roll-button, .stop-button {
+                padding: 8px 12px;
+                font-size: 0.9rem;
+            }
+            .score, .total-score {
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Tärningsspelet 10000</h1>
+    
+    <div class="player-container active" id="player1">
+        <h2>Spelare 1</h2>
+        <div class="dice-container">
+            <div class="dice">?</div>
+            <div class="dice">?</div>
+            <div class="dice">?</div>
+            <div class="dice">?</div>
+            <div class="dice">?</div>
+            <div class="dice">?</div>
+        </div>
+        <button class="roll-button">Kasta tärningarna</button>
+        <button class="stop-button" disabled>Stanna</button>
+        <div class="score">Poäng: 0</div>
+        <div class="total-score">Totalpoäng: 0</div>
+    </div>
+    
+    <div class="player-container inactive" id="player2">
+        <h2>Spelare 2</h2>
+        <div class="dice-container">
+            <div class="dice">?</div>
+            <div class="dice">?</div>
+            <div class="dice">?</div>
+            <div class="dice">?</div>
+            <div class="dice">?</div>
+            <div class="dice">?</div>
+        </div>
+        <button class="roll-button">Kasta tärningarna</button>
+        <button class="stop-button" disabled>Stanna</button>
+        <div class="score">Poäng: 0</div>
+        <div class="total-score">Totalpoäng: 0</div>
+    </div>
+
+    <div class="message" id="message">Tyvärr inga poäng - nästa spelares tur...</div>
+
+    <script>
+        let currentPlayer = 'player1';
+        const gameState = {
+            player1: { totalScore: 0, roundScore: 0, heldDice: [] },
+            player2: { totalScore: 0, roundScore: 0, heldDice: [] }
+        };
+
+        function createPlayerLogic(playerContainer, playerId) {
+            const diceElements = playerContainer.querySelectorAll('.dice');
+            const rollButton = playerContainer.querySelector('.roll-button');
+            const stopButton = playerContainer.querySelector('.stop-button');
+            const scoreDisplay = playerContainer.querySelector('.score');
+            const totalScoreDisplay = playerContainer.querySelector('.total-score');
+            const messageElement = document.getElementById('message');
+
+            function rollDice() {
+                if (currentPlayer !== playerId) return;
+                const currentGame = gameState[playerId];
+                diceElements.forEach((dice, index) => {
+                    if (!currentGame.heldDice.includes(index)) {
+                        const diceValue = Math.floor(Math.random() * 6) + 1;
+                        dice.textContent = diceValue;
+                    }
+                });
+            }
+
+            function calculateScore() {
+                const currentGame = gameState[playerId];
+                const diceCounts = [0, 0, 0, 0, 0, 0];
+
+                currentGame.heldDice.forEach(index => {
+                    const value = parseInt(diceElements[index].textContent);
+                    diceCounts[value - 1]++;
+                });
+
+                let points = 0;
+                diceCounts.forEach((count, index) => {
+                    const diceValue = index + 1;
+                    if (count >= 3) {
+                        points += diceValue === 1 ? 1000 : diceValue * 100;
+                    }
+                    points += count * (diceValue === 1 ? 100 : diceValue === 5 ? 50 : 0);
+                });
+
+                currentGame.roundScore = points;
+                scoreDisplay.textContent = `Poäng: ${points}`;
+                updateStopButton(points);
+            }
+
+            function updateStopButton(roundScore) {
+                stopButton.disabled = roundScore < 350;
+            }
+
+            function toggleHold(event) {
+                const dice = event.target;
+                const diceIndex = Array.from(diceElements).indexOf(dice);
+                const currentGame = gameState[playerId];
+
+                if (currentGame.heldDice.includes(diceIndex)) {
+                    currentGame.heldDice.splice(currentGame.heldDice.indexOf(diceIndex), 1);
+                    dice.classList.remove('held');
+                } else {
+                    currentGame.heldDice.push(diceIndex);
+                    dice.classList.add('held');
+                }
+                calculateScore();
+            }
+
+            function switchPlayer() {
+                const currentGame = gameState[currentPlayer];
+                currentGame.totalScore += currentGame.roundScore;
+                currentGame.roundScore = 0;
+                currentGame.heldDice = [];
+                totalScoreDisplay.textContent = `Totalpoäng: ${currentGame.totalScore}`;
+                diceElements.forEach(dice => {
+                    dice.textContent = '?';
+                    dice.classList.remove('held');
+                });
+                currentPlayer = currentPlayer === 'player1' ? 'player2' : 'player1';
+                document.getElementById('player1').classList.toggle('inactive', currentPlayer !== 'player1');
+                document.getElementById('player2').classList.toggle('inactive', currentPlayer !== 'player2');
+            }
+
+            rollButton.addEventListener('click', rollDice);
+            stopButton.addEventListener('click', switchPlayer);
+            diceElements.forEach(dice => dice.addEventListener('click', toggleHold));
+        }
+
+        createPlayerLogic(document.getElementById('player1'), 'player1');
+        createPlayerLogic(document.getElementById('player2'), 'player2');
+    </script>
+</body>
+</html>
